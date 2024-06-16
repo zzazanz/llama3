@@ -243,9 +243,12 @@ class TransformerBlock(nn.Module):
         freqs_cis: torch.Tensor,
         mask: Optional[torch.Tensor],
     ):
-        h = x + self.attention(self.attention_norm(x), start_pos, freqs_cis, mask)
-        out = h + self.feed_forward(self.ffn_norm(h))
-        return out
+        attn = self.attention(self.attention_norm(x), start_pos, freqs_cis, mask)
+        mlp = self.feed_forward(self.ffn_norm(h))
+
+        h = x + attn
+        out = h + mlp
+        return out, attn, mlp
 
 
 class Transformer(nn.Module):
@@ -294,9 +297,13 @@ class Transformer(nn.Module):
             mask = torch.hstack(
                 [torch.zeros((seqlen, start_pos), device=tokens.device), mask]
             ).type_as(h)
+        
+        attn_list = mlp_list = []
 
         for layer in self.layers:
-            h = layer(h, start_pos, freqs_cis, mask)
+            h, attn, mlp = layer(h, start_pos, freqs_cis, mask)
+            attn_list.append(attn)
+            mlp_list.append(mlp)
         h = self.norm(h)
         output = self.output(h).float()
-        return output
+        return output, torch.stack(attn_list), torch.stack(mlp_list)
