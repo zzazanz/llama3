@@ -244,10 +244,11 @@ class TransformerBlock(nn.Module):
         mask: Optional[torch.Tensor],
     ):
         attn = self.attention(self.attention_norm(x), start_pos, freqs_cis, mask)
-        mlp = self.feed_forward(self.ffn_norm(h))
-
         h = x + attn
+
+        mlp = self.feed_forward(self.ffn_norm(h))
         out = h + mlp
+        
         return out, attn, mlp
 
 
